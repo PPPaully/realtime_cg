@@ -45,6 +45,7 @@ class Viewport;
 class Viewport {
 public:
 	int w, h; // width and height
+	bool toonShade = false;
 };
 
 class Material{
@@ -159,7 +160,7 @@ vec3 computeShadedColor(vec3 pos) {
         vec3 spc = vec3(material.ks.r*lc.r,material.ks.g*lc.g,material.ks.b*lc.b)*pow(max(r*v,0.0f),material.sp);
         sum += amb + dif + spc;
     }
-    sum = toonShading(sum,pos);
+    if(viewport.toonShade)sum = toonShading(sum,pos);
     return  sum;
 }
 //****************************************************
@@ -272,6 +273,11 @@ void parseArguments(int argc, char* argv[]) {
 			}
 			lights.push_back(light);
 			i+=7;
+		}
+		else if(strcmp(argv[i], "-ts") == 0) {
+            // ToonShading
+            viewport.toonShade = true;
+            i++;
 		}
 	}
 }
