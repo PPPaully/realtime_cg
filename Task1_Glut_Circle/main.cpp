@@ -45,6 +45,9 @@ class Viewport;
 class Viewport {
 public:
     int w, h; // width and height
+    bool toonShade = false;
+    bool writeIFile = false;
+    char* iFileType;
 };
 
 class Material {
@@ -80,9 +83,6 @@ vector<Light> lights;
 Viewport	viewport;
 int 		drawX = 0;
 int 		drawY = 0;
-int         captureWidth = 0;
-int         captureHeight = 0;
-int         isCapture = 0;
 
 
 void initScene() {
@@ -162,7 +162,7 @@ vec3 computeShadedColor(vec3 pos) {
         vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
         sum += amb + dif + spc;
     }
-    //sum = toonShading(sum,pos);
+    if(viewport.toonShade)sum = toonShading(sum, pos);
     return  sum;
 }
 
@@ -206,24 +206,32 @@ vector<vector<vec3>> computePixelMap(int iwidth, int iheight) {
 //****************************************************
 // Write BMP & PPM file
 //****************************************************
-void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
+void writeImageFile(char* fileName, char* fileType) {
+    int width = viewport.w;
+    int height = viewport.h;
 
-    vector<vector<vec3>> pMap = computePixelMap(WIDTH, HEIGHT);
+    vector<vector<vec3>> pMap = computePixelMap(width, height);
 
     cout << "Image calculated.\n";
 
+    char file[256]="";
+    strcat(file,fileName);
+
     ofstream ofs;
-    ofs.open(fileName);
+
 
     int red, green, blue;
 
     if(strcmp(fileType, "BMP") == 0) {
 
-        int extrabytes = 4 - ((WIDTH * 3) % 4); // Yhe size of which must be a multiple of 4 bytes.
+        strcat(file,".bmp");
+        ofs.open(file);
+
+        int extrabytes = 4 - ((width * 3) % 4); // Yhe size of which must be a multiple of 4 bytes.
         if (extrabytes == 4)
             extrabytes = 0;
 
-        int paddedsize = ((WIDTH * 3) + extrabytes) * HEIGHT;
+        int paddedsize = ((width * 3) + extrabytes) * height;
 
         // BMP Header.
 
@@ -237,8 +245,8 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
         BITMAPINFOHEADER bmih;
         memset(&bmih, 0, 40);
         bmih.biSize = sizeof(BITMAPINFOHEADER);
-        bmih.biWidth = WIDTH;
-        bmih.biHeight = HEIGHT;
+        bmih.biWidth = width;
+        bmih.biHeight = height;
         bmih.biPlanes = 1;
         bmih.biBitCount = 24;
         bmih.biCompression = 0;
@@ -247,12 +255,12 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
         ofs.write((char*)(&bmfh), sizeof(BITMAPFILEHEADER));
         ofs.write((char*)(&bmih), sizeof(BITMAPINFOHEADER));
 
-        for (int y = HEIGHT - 1; y >= 0; y--) { // BMP is written from bottom to top.
-            for (int x = 0; x <= WIDTH - 1; x++) {
+        for (int y = height - 1; y >= 0; y--) { // BMP is written from bottom to top.
+            for (int x = 0; x <= width - 1; x++) {
 
-                red = pMap[x][HEIGHT - y - 1].r * 255;
-                green = pMap[x][HEIGHT - y - 1].g * 255;
-                blue = pMap[x][HEIGHT - y - 1].b * 255;
+                red = pMap[x][height - y - 1].r * 255;
+                green = pMap[x][height - y - 1].g * 255;
+                blue = pMap[x][height - y - 1].b * 255;
 
                 if (red > 255) red = 255;
                 if (red < 0) red = 0;
@@ -271,14 +279,17 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
         }
     } else if(strcmp(fileType, "PPM") == 0) {
 
-        ofs << "P3\n" << WIDTH << " " << HEIGHT << "\n255\n"; // PPM header.
+        strcat(file,".ppm");
+        ofs.open(file);
 
-        for (int y = 0; y < HEIGHT - 1; y++) { // PPM body
-            for (int x = 0; x <= WIDTH - 1; x++) {
+        ofs << "P3\n" << width << " " << height << "\n255\n"; // PPM header.
 
-                red = pMap[x][HEIGHT - y - 1].r * 255;
-                green = pMap[x][HEIGHT - y - 1].g * 255;
-                blue = pMap[x][HEIGHT - y - 1].b * 255;
+        for (int y = 0; y < height - 1; y++) { // PPM body
+            for (int x = 0; x <= width - 1; x++) {
+
+                red = pMap[x][height - y - 1].r * 255;
+                green = pMap[x][height - y - 1].g * 255;
+                blue = pMap[x][height - y - 1].b * 255;
 
                 if (red > 255) red = 255;
                 if (red < 0) red = 0;
@@ -294,12 +305,15 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
 
     } else  {
 
-        for (int y = 0; y < HEIGHT - 1; y++) { // Pixel Matrix
-            for (int x = 0; x <= WIDTH - 1; x++) {
+        strcat(file,".txt");
+        ofs.open(file);
 
-                red = pMap[x][HEIGHT - y - 1].r * 255;
-                green = pMap[x][HEIGHT - y - 1].g * 255;
-                blue = pMap[x][HEIGHT - y - 1].b * 255;
+        for (int y = 0; y < height - 1; y++) { // Pixel Matrix
+            for (int x = 0; x <= width - 1; x++) {
+
+                red = pMap[x][height - y - 1].r * 255;
+                green = pMap[x][height - y - 1].g * 255;
+                blue = pMap[x][height - y - 1].b * 255;
 
                 if (red > 255) red = 255;
                 if (red < 0) red = 0;
@@ -316,7 +330,7 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
 
     ofs.close();
 
-    cout << "File: " << fileName << " created!\n";
+    cout << "File: " << file << " created!\n";
 
 }
 //****************************************************
@@ -424,16 +438,20 @@ void parseArguments(int argc, char* argv[]) {
             }
             lights.push_back(light);
             i += 7;
+        } else if(strcmp(argv[i], "-ts") == 0) {
+            // ToonShading
+            viewport.toonShade = true;
+            i++;
         } else if ((strcmp(argv[i], "-bmp") == 0) || (strcmp(argv[i], "-ppm")) == 0) {
-            captureWidth = atoi(argv[i + 1]);
-            captureHeight = atoi(argv[i + 2]);
-            isCapture = 1;
+            viewport.w = atoi(argv[i + 1]);
+            viewport.h = atoi(argv[i + 2]);
+            viewport.writeIFile = true;
             if (strcmp(argv[i], "-bmp") == 0) {
                 // BMP
-                isCapture = 1;
+                viewport.iFileType = "BMP";
             } else {
                 // PPM
-                isCapture = 2;
+                viewport.iFileType = "PPM";
             }
             i += 3;
         }
@@ -447,11 +465,8 @@ int main(int argc, char *argv[]) {
 
     parseArguments(argc, argv);
 
-    if (isCapture == 1) {
-        writeImageFile("image.bmp", "BMP", captureWidth, captureHeight);
-        return 0;
-    } else if (isCapture == 2) {
-        writeImageFile("image.ppm", "PPM", captureWidth, captureHeight);
+    if (viewport.writeIFile) {
+        writeImageFile("image", viewport.iFileType);
         return 0;
     }
 
