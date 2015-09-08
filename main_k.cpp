@@ -193,7 +193,7 @@ void myDisplay() {
 			// Calculate the x, y, z of the surface of the sphere
 			float x = j * ih;
 			float y = i * ih;
-			float z = sqrtf((width*ih*width*ih) - x*x);
+			float z = sqrtf((width*width) - j*j)*ih;
 			vec3 pos(x,y,z); // Position on the surface of the sphere
 
 			vec3 col = computeShadedColor(pos);
