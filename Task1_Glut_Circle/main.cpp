@@ -170,12 +170,12 @@ vec3 computeShadedColor(vec3 pos) {
 // compute the bmp map vector[y position][x position][0 = red, 1 = green, 2 = blue]
 //****************************************************
 vector<vector<vec3>> computePixelMap(int iwidth, int iheight) {
-    vector<vector<vec3>> bmap;
-    bmap.resize(iheight);
+    vector<vector<vec3>> pMap;
+    pMap.resize(iheight);
     for (int i = 0; i < iheight; i++) {
-        bmap[i].resize(iwidth);
+        pMap[i].resize(iwidth);
         for (int j = 0; j < iwidth; j++) {
-            bmap[i][j] = vec3(1.0f, 1.0f, 1.0f);
+            pMap[i][j] = vec3(1.0f, 1.0f, 1.0f);
         }
     }
 
@@ -197,18 +197,18 @@ vector<vector<vec3>> computePixelMap(int iwidth, int iheight) {
             vec3 col = computeShadedColor(pos);
 
             // Set the red pixel
-            bmap[j + iheight / 2][i + iwidth / 2] = col;
+            pMap[j + iheight / 2][i + iwidth / 2] = col;
         }
     }
-    return bmap;
+    return pMap;
 }
 
 //****************************************************
-// Write BMP to file
+// Write BMP & PPM file
 //****************************************************
 void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
 
-    vector<vector<vec3>> bmap = computePixelMap(WIDTH, HEIGHT);
+    vector<vector<vec3>> pMap = computePixelMap(WIDTH, HEIGHT);
 
     cout << "Image calculated.\n";
 
@@ -250,9 +250,9 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
         for (int y = HEIGHT - 1; y >= 0; y--) { // BMP is written from bottom to top.
             for (int x = 0; x <= WIDTH - 1; x++) {
 
-                red = bmap[x][WIDTH - y - 1].r * 255;
-                green = bmap[x][WIDTH - y - 1].g * 255;
-                blue = bmap[x][WIDTH - y - 1].b * 255;
+                red = pMap[x][HEIGHT - y - 1].r * 255;
+                green = pMap[x][HEIGHT - y - 1].g * 255;
+                blue = pMap[x][HEIGHT - y - 1].b * 255;
 
                 if (red > 255) red = 255;
                 if (red < 0) red = 0;
@@ -260,7 +260,9 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
                 if (green < 0) green = 0;
                 if (blue > 255) blue = 255;
                 if (blue < 0) blue = 0;
+
                 ofs << (char)blue << (char)green << (char)red;  // BMP is written in (b,g,r) format.
+
             }
             if (extrabytes > 0) // BMP lines must be of lengths divisible by 4.
                 for (int n = 1; n <= extrabytes; n++)
@@ -274,9 +276,9 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
         for (int y = 0; y < HEIGHT - 1; y++) { // PPM body
             for (int x = 0; x <= WIDTH - 1; x++) {
 
-                red = bmap[x][WIDTH - y - 1].r * 255;
-                green = bmap[x][WIDTH - y - 1].g * 255;
-                blue = bmap[x][WIDTH - y - 1].b * 255;
+                red = pMap[x][HEIGHT - y - 1].r * 255;
+                green = pMap[x][HEIGHT - y - 1].g * 255;
+                blue = pMap[x][HEIGHT - y - 1].b * 255;
 
                 if (red > 255) red = 255;
                 if (red < 0) red = 0;
@@ -284,18 +286,20 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
                 if (green < 0) green = 0;
                 if (blue > 255) blue = 255;
                 if (blue < 0) blue = 0;
+
                 ofs << red << " " << green << " " << blue << " ";
             }
             ofs << "\n";
         }
 
     } else  {
-        for (int y = 0; y < HEIGHT - 1; y++) { // Pixel array
+
+        for (int y = 0; y < HEIGHT - 1; y++) { // Pixel Matrix
             for (int x = 0; x <= WIDTH - 1; x++) {
 
-                red = bmap[x][WIDTH - y - 1].r * 255;
-                green = bmap[x][WIDTH - y - 1].g * 255;
-                blue = bmap[x][WIDTH - y - 1].b * 255;
+                red = pMap[x][HEIGHT - y - 1].r * 255;
+                green = pMap[x][HEIGHT - y - 1].g * 255;
+                blue = pMap[x][HEIGHT - y - 1].b * 255;
 
                 if (red > 255) red = 255;
                 if (red < 0) red = 0;
@@ -303,6 +307,7 @@ void writeImageFile(char* fileName, char* fileType, int WIDTH, int HEIGHT) {
                 if (green < 0) green = 0;
                 if (blue > 255) blue = 255;
                 if (blue < 0) blue = 0;
+
                 ofs << red << " " << green << " " << blue << "   ";
             }
             ofs << "\n";
