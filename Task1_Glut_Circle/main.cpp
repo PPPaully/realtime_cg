@@ -217,7 +217,8 @@ void writeImageFile(char* fileName, char* fileType) {
     char file[256]="";
     strcat(file,fileName);
 
-    ofstream ofs;
+    FILE* of;
+    //ofstream ofs;
 
 
     int red, green, blue;
@@ -225,7 +226,8 @@ void writeImageFile(char* fileName, char* fileType) {
     if(strcmp(fileType, "BMP") == 0) {
 
         strcat(file,".bmp");
-        ofs.open(file);
+        of = fopen(file,"wb");
+        //ofs.open(file);
 
         int extrabytes = 4 - ((width * 3) % 4); // Yhe size of which must be a multiple of 4 bytes.
         if (extrabytes == 4)
@@ -252,8 +254,10 @@ void writeImageFile(char* fileName, char* fileType) {
         bmih.biCompression = 0;
         bmih.biSizeImage = paddedsize;
 
-        ofs.write((char*)(&bmfh), sizeof(BITMAPFILEHEADER));
-        ofs.write((char*)(&bmih), sizeof(BITMAPINFOHEADER));
+        fwrite(&bmfh, 1, sizeof(bmfh), of);
+        //ofs.write((char*)(&bmfh), sizeof(BITMAPFILEHEADER));
+        fwrite(&bmih, 1, sizeof(bmih), of);
+        //ofs.write((char*)(&bmih), sizeof(BITMAPINFOHEADER));
 
         for (int y = height - 1; y >= 0; y--) { // BMP is written from bottom to top.
             for (int x = 0; x <= width - 1; x++) {
@@ -269,20 +273,24 @@ void writeImageFile(char* fileName, char* fileType) {
                 if (blue > 255) blue = 255;
                 if (blue < 0) blue = 0;
 
-                ofs << (char)blue << (char)green << (char)red;  // BMP is written in (b,g,r) format.
+                fprintf(of,"%c%c%c",blue,green,red);
+                //ofs << (char)blue << (char)green << (char)red;  // BMP is written in (b,g,r) format.
 
             }
             if (extrabytes > 0) // BMP lines must be of lengths divisible by 4.
                 for (int n = 1; n <= extrabytes; n++)
-                    ofs << (char)0;
+                    fprintf(of,"%c",0);
+                    //ofs << (char)0;
 
         }
     } else if(strcmp(fileType, "PPM") == 0) {
 
         strcat(file,".ppm");
-        ofs.open(file);
+        of = fopen(file,"wb");
+        //ofs.open(file);
 
-        ofs << "P3\n" << width << " " << height << "\n255\n"; // PPM header.
+        fprintf(of,"P3\n%d %d\n255\n",width,height);
+        //ofs << "P3\n" << width << " " << height << "\n255\n"; // PPM header.
 
         for (int y = 0; y < height - 1; y++) { // PPM body
             for (int x = 0; x <= width - 1; x++) {
@@ -298,15 +306,18 @@ void writeImageFile(char* fileName, char* fileType) {
                 if (blue > 255) blue = 255;
                 if (blue < 0) blue = 0;
 
-                ofs << red << " " << green << " " << blue << " ";
+                fprintf(of,"%d %d %d",blue,green,red);
+                //ofs << red << " " << green << " " << blue << " ";
             }
-            ofs << "\n";
+            fprintf(of,"\n");
+            //ofs << "\n";
         }
 
     } else  {
 
         strcat(file,".txt");
-        ofs.open(file);
+        of = fopen(file,"wb");
+        //ofs.open(file);
 
         for (int y = 0; y < height - 1; y++) { // Pixel Matrix
             for (int x = 0; x <= width - 1; x++) {
@@ -322,13 +333,16 @@ void writeImageFile(char* fileName, char* fileType) {
                 if (blue > 255) blue = 255;
                 if (blue < 0) blue = 0;
 
-                ofs << red << " " << green << " " << blue << "   ";
+                fprintf(of,"%3d %3d %3d  ",blue,green,red);
+                //ofs << red << " " << green << " " << blue << "   ";
             }
-            ofs << "\n";
+            fprintf(of,"\n");
+            //ofs << "\n";
         }
     }
 
-    ofs.close();
+    fclose(of);
+    //ofs.close();
 
     cout << "File: " << file << " created!\n";
 
