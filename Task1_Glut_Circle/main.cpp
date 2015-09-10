@@ -45,7 +45,7 @@ class Viewport;
 class Viewport {
 public:
 	int w, h; // width and height
-	int shade = 5; // shade of Toon Shading
+	int shade = 3; // shade of Toon Shading
 	bool toonShade = false;
 };
 
@@ -75,6 +75,10 @@ public:
 // Material and lights
 Material material;
 vector<Light> lights;
+float pixels[1000][1000][3];
+float sobel[3][3] = {{1,2,1},{0,0,0},{-1,-2,-1}};
+float edgeX[1000][1000]={};
+float edgeY[1000][1000]={};
 
 //****************************************************
 // Global Variables
@@ -86,6 +90,9 @@ int 		drawY = 0;
 
 void initScene(){
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f); // Clear to black, fully transparent
+	for(int x=0;x<viewport.w;x++)
+        for(int y=0;y<viewport.h;y++)
+            pixels[x][y][0] = pixels[x][y][1] = pixels[x][y][2] = 1.0f;
 
 	glViewport (0,0,viewport.w,viewport.h);
 	glMatrixMode(GL_PROJECTION);
@@ -112,8 +119,15 @@ void myReshape(int w, int h) {
 }
 
 void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
-	glColor3f(r, g, b);
-	glVertex2f(x+0.5, y+0.5);
+    if(viewport.toonShade) {
+        pixels[x][y][0] = r;
+        pixels[x][y][1] = g;
+        pixels[x][y][2] = b;
+    }
+    else {
+        glColor3f(r, g, b);
+        glVertex2f(x+0.5, y+0.5);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +168,37 @@ vec3 computeShadedColor(vec3 pos) {
     if(viewport.toonShade)sum = toonShading(sum,pos);
     return  sum;
 }
+
+void edgeFilter(int maxX, int maxY) {
+    for(int x=0; x<maxX; x++) {
+        for(int y=0; y<maxY; y++) {
+            edgeX[x][y] = 0.0f;
+            edgeY[x][y] = 0.0f;
+        }
+    }
+    for(int x=0; x+3 < maxX; x++) {
+        for(int y=0; y+3 < maxY; y++) {
+            for(int i=0; i<3; i++) {
+                for(int j=0; j<3; j++) {
+                    for(int k=0; k<3; k++) {
+                        float avg = (pixels[x+k][y+i][0]+pixels[x+k][y+i][1]+pixels[x+k][y+i][2])/3;
+                        edgeX[x+i][y+j] += sobel[k][i]*avg;
+                        edgeY[x+i][y+j] += sobel[i][k]*avg;
+                    }
+                }
+            }
+            for(int i=0; i<3; i++) {
+                for(int j=0; j<3; j++) {
+                    float e = (1-(sqrt(pow(edgeX[x+i][y+j],2)+pow(edgeY[x+i][y+j],2))));
+//                    glColor3f(e,e,e);
+//                    glColor3f(min(e,pixels[x+i][y+j][0]), min(e,pixels[x+i][y+j][1]), min(e,pixels[x+i][y+j][2]));
+                    glColor3f(e*pixels[x+i][y+j][0], e*pixels[x+i][y+j][1], e*pixels[x+i][y+j][2]);
+                    glVertex2f(x+i+0.5, y+j+0.5);
+                }
+            }
+        }
+    }
+}
 //****************************************************
 // function that does the actual drawing of stuff
 //***************************************************
@@ -186,6 +231,8 @@ void myDisplay() {
 			setPixel(drawX + j, drawY + i, col.r, col.g, col.b);
 		}
 	}
+	if(viewport.toonShade)
+        edgeFilter(viewport.w,viewport.h);
 	glEnd();
 
 	glFlush();
@@ -314,11 +361,3 @@ int main(int argc, char *argv[]) {
 
   	return 0;
 }
-
-
-
-
-
-
-
-
