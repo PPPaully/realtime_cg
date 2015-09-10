@@ -45,6 +45,7 @@ class Viewport;
 class Viewport {
 public:
 	int w, h; // width and height
+	int shade = 5; // shade of Toon Shading
 	bool toonShade = false;
 };
 
@@ -122,24 +123,14 @@ void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
 //      //     ///////   ///////   //  ///   //////   //   //   //  //   ////    /////
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-int shade = 3;
-
 float cutColor(float x) {
-    float y = 100.0f/shade;
-    if((x*100.0f)/y - floor((x*100.0f)/y)>=0.48&&(x*100.0f)/y - floor((x*100.0f)/y)<=0.52)
-        return 0.7*x;
-    return ((x*100.0f)/y - floor((x*100.0f)/y) >= 0.5 ? ceil((x*100.0f)/y):floor((x*100.0f)/y) )*y/100.0f;
+    return floor(x*viewport.shade) / viewport.shade;
 }
 
 vec3 toonShading(vec3 v,vec3 pos) {
     vec3 tmp = vec3(cutColor(v.x),cutColor(v.y),cutColor(v.z));
-
-    if(0 <= pos.normalize().z && pos.normalize().z <= 0.2)
-        tmp = 0.2 * tmp;
-
 //    if(abs(v.x - tmp.x) >= 0.3)
 //        tmp = 0.2 * tmp;
-
     return tmp;
 }
 
@@ -277,6 +268,8 @@ void parseArguments(int argc, char* argv[]) {
 		else if(strcmp(argv[i], "-ts") == 0) {
             // ToonShading
             viewport.toonShade = true;
+            if(i+1 < argc && '0' <= argv[i+1][0] && argv[i+1][0] <= '9')
+                viewport.shade = min(atoi(argv[++i]),1);
             i++;
 		}
 	}
