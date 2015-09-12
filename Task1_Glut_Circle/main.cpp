@@ -45,6 +45,7 @@ class Viewport;
 class Viewport {
 public:
 	int w, h; // width and height
+	int shade = 3; // shade of Toon Shading
 	bool toonShade = false;
 };
 
@@ -74,6 +75,10 @@ public:
 // Material and lights
 Material material;
 vector<Light> lights;
+float pixels[1000][1000][3];
+float sobel[3][3] = {{1,2,1},{0,0,0},{-1,-2,-1}};
+float edgeX[1000][1000]={};
+float edgeY[1000][1000]={};
 
 //****************************************************
 // Global Variables
@@ -81,10 +86,14 @@ vector<Light> lights;
 Viewport	viewport;
 int 		drawX = 0;
 int 		drawY = 0;
+int         totalObjects = 1;
 
 
 void initScene(){
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f); // Clear to black, fully transparent
+	for(int x=0;x<viewport.w;x++)
+        for(int y=0;y<viewport.h;y++)
+            pixels[x][y][0] = pixels[x][y][1] = pixels[x][y][2] = 1.0f;
 
 	glViewport (0,0,viewport.w,viewport.h);
 	glMatrixMode(GL_PROJECTION);
@@ -111,8 +120,15 @@ void myReshape(int w, int h) {
 }
 
 void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
-	glColor3f(r, g, b);
-	glVertex2f(x+0.5, y+0.5);
+    if(viewport.toonShade) {
+        pixels[x][y][0] = r;
+        pixels[x][y][1] = g;
+        pixels[x][y][2] = b;
+    }
+    else {
+        glColor3f(r, g, b);
+        glVertex2f(x+0.5, y+0.5);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,24 +138,14 @@ void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
 //      //     ///////   ///////   //  ///   //////   //   //   //  //   ////    /////
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-int shade = 3;
-
 float cutColor(float x) {
-    float y = 100.0f/shade;
-    if((x*100.0f)/y - floor((x*100.0f)/y)>=0.48&&(x*100.0f)/y - floor((x*100.0f)/y)<=0.52)
-        return 0.7*x;
-    return ((x*100.0f)/y - floor((x*100.0f)/y) >= 0.5 ? ceil((x*100.0f)/y):floor((x*100.0f)/y) )*y/100.0f;
+    return floor(x*viewport.shade) / viewport.shade;
 }
 
 vec3 toonShading(vec3 v,vec3 pos) {
     vec3 tmp = vec3(cutColor(v.x),cutColor(v.y),cutColor(v.z));
-
-    if(0 <= pos.normalize().z && pos.normalize().z <= 0.2)
-        tmp = 0.2 * tmp;
-
 //    if(abs(v.x - tmp.x) >= 0.3)
 //        tmp = 0.2 * tmp;
-
     return tmp;
 }
 
@@ -163,7 +169,38 @@ vec3 computeShadedColor(vec3 pos) {
     if(viewport.toonShade)sum = toonShading(sum,pos);
     return  sum;
 }
-vec3 computeShadedColor2(vec3 pos,vec3 mov) {
+
+void edgeFilter(int maxX, int maxY) {
+    for(int x=0; x<maxX; x++) {
+        for(int y=0; y<maxY; y++) {
+            edgeX[x][y] = 0.0f;
+            edgeY[x][y] = 0.0f;
+        }
+    }
+    for(int x=0; x+3 < maxX; x++) {
+        for(int y=0; y+3 < maxY; y++) {
+            for(int i=0; i<3; i++) {
+                for(int j=0; j<3; j++) {
+                    for(int k=0; k<3; k++) {
+                        float avg = (pixels[x+k][y+i][0]+pixels[x+k][y+i][1]+pixels[x+k][y+i][2])/3;
+                        edgeX[x+i][y+j] += sobel[k][i]*avg;
+                        edgeY[x+i][y+j] += sobel[i][k]*avg;
+                    }
+                }
+            }
+            for(int i=0; i<3; i++) {
+                for(int j=0; j<3; j++) {
+                    float e = (1-(sqrt(pow(edgeX[x+i][y+j],2)+pow(edgeY[x+i][y+j],2))));
+//                    glColor3f(e,e,e);
+//                    glColor3f(min(e,pixels[x+i][y+j][0]), min(e,pixels[x+i][y+j][1]), min(e,pixels[x+i][y+j][2]));
+                    glColor3f(e*pixels[x+i][y+j][0], e*pixels[x+i][y+j][1], e*pixels[x+i][y+j][2]);
+                    glVertex2f(x+i+0.5, y+j+0.5);
+                }
+            }
+        }
+    }
+}
+vec3 computeShadedColor(vec3 pos,vec3 mov) {
 	// TODO: Your shading code mostly go here
 
 //	return vec3(0.1f, 0.1f, 0.1f);
@@ -182,7 +219,7 @@ vec3 computeShadedColor2(vec3 pos,vec3 mov) {
         vec3 spc = vec3(material.ks.r*lc.r,material.ks.g*lc.g,material.ks.b*lc.b)*pow(max(r*v,0.0f),material.sp);
         sum += amb + dif + spc;
     }
-    // 5sum = toonShading(sum,pos);
+    if(viewport.toonShade)sum = toonShading(sum,pos);
     return  sum;
 }
 //****************************************************
@@ -195,12 +232,15 @@ void myDisplay() {
 	glMatrixMode(GL_MODELVIEW);					// indicate we are specifying camera transformations
 	glLoadIdentity();							// make sure transformation is "zero'd"
 
-    int n = 25;
+    int n = totalObjects;
     int scale = 2*sqrt(n);
     int drawRadius = min(viewport.w, viewport.h) / scale - 10;  // Make it almost fit the entire window
 	float idrawRadius = 1.0f / drawRadius;
 	// Start drawing sphere
 	glBegin(GL_POINTS);
+
+	if(viewport.toonShade)
+        edgeFilter(viewport.w,viewport.h);
     for (int i = -drawRadius; i <= drawRadius; i++) {
         int width = floor(sqrt((float)(drawRadius * drawRadius - i * i)));
         for (int j = -width; j <= width; j++) {
@@ -214,7 +254,7 @@ void myDisplay() {
                 for(int l = -(sqrt(n)-1); l <= (sqrt(n)-1); l += 2) {
                     vec3 mov(k * drawRadius, l * drawRadius, 0.0f);
                     vec3 mov2(k, l, 0.0f);
-                    vec3 col = computeShadedColor2(pos, -mov2);
+                    vec3 col = computeShadedColor(pos, -mov2);
 
                     // Set the red pixel
                     setPixel(drawX + j + mov.x, drawY + i + mov.y, col.r, col.g, col.b);
@@ -305,7 +345,13 @@ void parseArguments(int argc, char* argv[]) {
 		else if(strcmp(argv[i], "-ts") == 0) {
             // ToonShading
             viewport.toonShade = true;
+            if(i+1 < argc && '0' <= argv[i+1][0] && argv[i+1][0] <= '9')
+                viewport.shade = min(atoi(argv[++i]),1);
             i++;
+		}
+		else if(strcmp(argv[i], "-no") == 0) {
+            totalObjects = (int)atoi(argv[i+1]);
+            i+=2;
 		}
 	}
 }
@@ -349,11 +395,3 @@ int main(int argc, char *argv[]) {
 
   	return 0;
 }
-
-
-
-
-
-
-
-
