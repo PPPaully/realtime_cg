@@ -195,79 +195,34 @@ void myDisplay() {
 	glMatrixMode(GL_MODELVIEW);					// indicate we are specifying camera transformations
 	glLoadIdentity();							// make sure transformation is "zero'd"
 
-    int n = 4;
-	int drawRadius = min(viewport.w, viewport.h)/n - 10;  // Make it almost fit the entire window
+    int n = 25;
+    int scale = 2*sqrt(n);
+    int drawRadius = min(viewport.w, viewport.h) / scale - 10;  // Make it almost fit the entire window
 	float idrawRadius = 1.0f / drawRadius;
 	// Start drawing sphere
 	glBegin(GL_POINTS);
     for (int i = -drawRadius; i <= drawRadius; i++) {
-		int width = floor(sqrt((float)(drawRadius*drawRadius-i*i)));
-		for (int j = -width; j <= width; j++) {
+        int width = floor(sqrt((float)(drawRadius * drawRadius - i * i)));
+        for (int j = -width; j <= width; j++) {
 
-			// Calculate the x, y, z of the surface of the sphere
-			float x = j * idrawRadius;
-			float y = i * idrawRadius;
-			float z = sqrtf(1.0f - x*x - y*y);
-			vec3 pos(x,y,z); // Position on the surface of the sphere
-            vec3 mov(drawRadius,drawRadius,0.0f);
-            vec3 mov2 = mov * idrawRadius;
-			vec3 col = computeShadedColor2(pos,-mov2);
+            // Calculate the x, y, z of the surface of the sphere
+            float x = j * idrawRadius;
+            float y = i * idrawRadius;
+            float z = sqrtf(1.0f - x * x - y * y);
+            vec3 pos(x, y, z); // Position on the surface of the sphere
+            for(int k = -(sqrt(n)-1); k <= (sqrt(n)-1); k += 2) {
+                for(int l = -(sqrt(n)-1); l <= (sqrt(n)-1); l += 2) {
+                    vec3 mov(k * drawRadius, l * drawRadius, 0.0f);
+                    vec3 mov2(k, l, 0.0f);
+                    vec3 col = computeShadedColor2(pos, -mov2);
 
-			// Set the red pixel
-			setPixel(drawX + j + mov.x, drawY + i+mov.y, col.r, col.g, col.b);
-		}
-	}
-	for (int i = -drawRadius; i <= drawRadius; i++) {
-		int width = floor(sqrt((float)(drawRadius*drawRadius-i*i)));
-		for (int j = -width; j <= width; j++) {
+                    // Set the red pixel
+                    setPixel(drawX + j + mov.x, drawY + i + mov.y, col.r, col.g, col.b);
+                }
+            }
 
-			// Calculate the x, y, z of the surface of the sphere
-			float x = j * idrawRadius;
-			float y = i * idrawRadius;
-			float z = sqrtf(1.0f - x*x - y*y);
-			vec3 pos(x,y,z); // Position on the surface of the sphere
-            vec3 mov(-drawRadius,-drawRadius,0.0f);
-            vec3 mov2 = mov * idrawRadius;
-			vec3 col = computeShadedColor2(pos,-mov2);
-
-			// Set the red pixel
-			setPixel(drawX + j + mov.x, drawY + i+mov.y, col.r, col.g, col.b);
-		}
-	}
-    for (int i = -drawRadius; i <= drawRadius; i++) {
-		int width = floor(sqrt((float)(drawRadius*drawRadius-i*i)));
-		for (int j = -width; j <= width; j++) {
-
-			// Calculate the x, y, z of the surface of the sphere
-			float x = j * idrawRadius;
-			float y = i * idrawRadius;
-			float z = sqrtf(1.0f - x*x - y*y);
-			vec3 pos(x,y,z); // Position on the surface of the sphere
-            vec3 mov(-drawRadius,drawRadius,0.0f);
-            vec3 mov2 = mov * idrawRadius;
-			vec3 col = computeShadedColor2(pos,-mov2);
-
-			// Set the red pixel
-			setPixel(drawX + j + mov.x, drawY + i+mov.y, col.r, col.g, col.b);
-		}
-	}
-	for (int i = -drawRadius; i <= drawRadius; i++) {
-		int width = floor(sqrt((float)(drawRadius*drawRadius-i*i)));
-		for (int j = -width; j <= width; j++) {
-
-			// Calculate the x, y, z of the surface of the sphere
-			float x = j * idrawRadius;
-			float y = i * idrawRadius;
-			float z = sqrtf(1.0f - x*x - y*y);
-			vec3 pos(x,y,z); // Position on the surface of the sphere
-            vec3 mov(drawRadius,-drawRadius,0.0f);
-            vec3 mov2 = mov * idrawRadius;
-			vec3 col = computeShadedColor2(pos,-mov2);
-
-			// Set the red pixel
-			setPixel(drawX + j + mov.x, drawY + i+mov.y, col.r, col.g, col.b);
-		}
-	}
+        }
+    }
 	glEnd();
 
 	glFlush();
