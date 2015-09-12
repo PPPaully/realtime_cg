@@ -222,11 +222,12 @@ void edgeFilter(int maxX, int maxY) {
 vec3 circleShape(float x,float y) {
     return vec3(x,y,sqrt(1.0f-x*x-y*y));
 }
-vec3 customShape(float u,float v) {
-    float C = 4*2;
-    float x = (sin(atan(u/v)*C));
-    float y = (cos(atan(u/v)*C));
-    float z = sin(u*u+v*v);
+vec3 coneShape(float u,float v) {
+    v = (-v + 1.0f)/2.0f;
+//    u /= 2.0f;
+    float x = atan(u/v);
+    float y = atan(u/v);
+    float z = sqrt(1.0f-x*x-y*y);
     return vec3(x,y,z);
 }
 //****************************************************
@@ -248,7 +249,7 @@ void myDisplay() {
 
 	for (int i = -drawRange; i <= drawRange; i++) {
 		for (int j = -drawRange; j <= drawRange; j++) {
-			vec3 pos = circleShape(i*drawRadius,j*drawRadius);
+			vec3 pos = coneShape(j*drawRadius,i*drawRadius);
 			if(pos.x != pos.x || pos.y != pos.y || pos.z != pos.z )
                 continue;
 			vec3 col = computeShadedColor(pos);
