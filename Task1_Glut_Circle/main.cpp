@@ -45,7 +45,8 @@ class Viewport;
 class Viewport {
 public:
     int w, h; // width and height
-    bool toonShade = false;
+	int shade = 3; // shade of Toon Shading
+	bool toonShade = false;
     bool writeIFile = false;
     char* iFileType;
 };
@@ -77,6 +78,15 @@ public:
 Material material;
 vector<Light> lights;
 
+// Edge Detector
+float sobel[3][3] = {{1,2,1},{0,0,0},{-1,-2,-1}};
+vector<vector<float> > pixels[3];
+vector<float> edgeX[3];
+vector<float> edgeY[3];
+
+// Pixel Map for Write to file Mode
+vector<vector<vec3>> pMap;
+
 //****************************************************
 // Global Variables
 //****************************************************
@@ -88,12 +98,21 @@ int 		drawY = 0;
 void initScene() {
     glClearColor(1.0f, 1.0f, 1.0f, 0.0f); // Clear to black, fully transparent
 
-    glViewport (0, 0, viewport.w, viewport.h);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0, viewport.w, 0, viewport.h);
+	for(int i=0;i<3;i++) {
+        edgeX[i].resize(viewport.w);
+        edgeY[i].resize(viewport.w);
+        pixels[i].resize(viewport.w);
+        for(int x=0;x<viewport.w;x++) {
+            pixels[i][x].resize(viewport.h);
+            for(int y=0;y<viewport.h;y++)
+                pixels[i][x][y] = 1.0f;
+        }
+	}
+	glViewport (0,0,viewport.w,viewport.h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0,viewport.w, 0, viewport.h);
 }
-
 
 //****************************************************
 // reshape viewport if the window is resized
@@ -102,53 +121,126 @@ void myReshape(int w, int h) {
     viewport.w = w;
     viewport.h = h;
 
-    glViewport (0, 0, viewport.w, viewport.h);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0, viewport.w, 0, viewport.h);
+	for(int i=0;i<3;i++) {
+        edgeX[i].resize(viewport.w);
+        edgeY[i].resize(viewport.w);
+        pixels[i].resize(viewport.w);
+        for(int x=0;x<viewport.w;x++) {
+            pixels[i][x].resize(viewport.h);
+            for(int y=0;y<viewport.h;y++)
+                pixels[i][x][y] = 1.0f;
+        }
+	}
+
+	glViewport (0,0,viewport.w,viewport.h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0, viewport.w, 0, viewport.h);
 
     drawX = (int)(viewport.w * 0.5f);
     drawY = (int)(viewport.h * 0.5f);
 
 }
 
-void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
-    glColor3f(r, g, b);
-    glVertex2f(x + 0.5, y + 0.5);
+////////////////////////////////////////////////////////////////////////////
+// mode "ts" - ToonShade, "gl" - OpenGL, "pic" - save to file
+////////////////////////////////////////////////////////////////////////////
+void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b, string mode) {
+    if(strcmp(mode.c_str(), "ts") == 0) {
+        pixels[0][x][y] = r;
+        pixels[1][x][y] = g;
+        pixels[2][x][y] = b;
+    } else if(strcmp(mode.c_str(), "pic") == 0) {
+        pMap[x][y] = vec3(r,g,b);
+    }
+    else if(strcmp(mode.c_str(), "gl") == 0){
+        glColor3f(r, g, b);
+        glVertex2f(x+0.5, y+0.5);
+    }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-//   ////////  ///////   ///////   //   //   //////   //   //   //////   ////    /////
-//      //     //   //   //   //   //// //   ///      //   //   //  //   //  //  ///
-//      //     //   //   //   //   // ////      ///   ///////   //////   //  //  ///
-//      //     ///////   ///////   //  ///   //////   //   //   //  //   ////    /////
-//////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+//  #####  ##  ##  ##### ###### ##### ##   ##    #####  ##  ##  ######  #####  #####
+//  ##     ##  ##  ###     ##   ##  # ### ###    ###    ######  ##  ##  ##  #  ## #
+//  ##     ##  ##    ###   ##   ##  # ## # ##      ###  ######  ######  #####  ###
+//  #####  ######  #####   ##   ##### ##   ##    #####  ##  ##  ##  ##  ##     #####
+//////////////////////////////////////////////////////////////////////////////////////
+vec3 circleShape(float x,float y) {
+    return vec3(x,y,sqrt(1.0f-x*x-y*y));
+}
 
-int shade = 3;
+vec3 customShape(float u,float v) {
+    float C = 4*2;
+    float x = (sin(atan(u/v)*C));
+    float y = (cos(atan(u/v)*C));
+    float z = sin(u*u+v*v);
+    return vec3(x,y,z);
+}
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
 
+
+//////////////////////////////////////////////////////////////////////////////
+// ######  #######  #######  ##   ##  #####  ##  ##  ######  ####   #####
+//   ##    ##   ##  ##   ##  #### ##  ###    ######  ##  ##  ##  #  ## #
+//   ##    ##   ##  ##   ##  ## ####    ###  ######  ######  ##  #  ###
+//   ##    #######  #######  ##  ###  #####  ##  ##  ##  ##  ####   #####
+//////////////////////////////////////////////////////////////////////////////
 float cutColor(float x) {
-    float y = 100.0f / shade;
-    if((x * 100.0f) / y - floor((x * 100.0f) / y) >= 0.48 && (x * 100.0f) / y - floor((x * 100.0f) / y) <= 0.52)
-        return 0.7 * x;
-    return ((x * 100.0f) / y - floor((x * 100.0f) / y) >= 0.5 ? ceil((x * 100.0f) / y) : floor((x * 100.0f) / y) ) * y / 100.0f;
+    return floor(x*viewport.shade) / viewport.shade;
 }
-
-vec3 toonShading(vec3 v, vec3 pos) {
-    vec3 tmp = vec3(cutColor(v.x), cutColor(v.y), cutColor(v.z));
-
-    if(0 <= pos.normalize().z && pos.normalize().z <= 0.2)
-        tmp = 0.2 * tmp;
-
-//    if(abs(v.x - tmp.x) >= 0.3)
-//        tmp = 0.2 * tmp;
-
+vec3 toonShading(vec3 v,vec3 pos) {
+    vec3 tmp = vec3(cutColor(v.x),cutColor(v.y),cutColor(v.z));
     return tmp;
 }
+void edgeFilter(int maxX, int maxY,string drawMode) {
+    for(int x=0; x<maxX; x++) {
+        for(int y=0; y<3; y++) {
+            edgeX[y][x] = 0.0f;
+            edgeY[y][x] = 0.0f;
+        }
+    }
+    for(int y=0; y+3 < maxY; y++) {
+        for(int x=0; x+3 < maxX; x++) {
+            for(int i=0; i<3; i++) {
+                for(int j=0; j<3; j++) {
+                    for(int k=0; k<3; k++) {
+                        float avg = (pixels[0][x+k][y+i]+pixels[1][x+k][y+i]+pixels[2][x+k][y+i])/3;
+                        edgeX[j][x+i] += sobel[k][i]*avg;
+                        edgeY[j][x+i] += sobel[i][k]*avg;
+                    }
+                }
+            }
+            // Clear Black L/R-Edge
+            edgeX[0][0] = edgeX[0][1] = 0.0f;
+            edgeY[0][0] = edgeY[0][1] = 0.0f;
+            edgeX[0][maxX-1] = edgeX[0][maxX-2] = 0.0f;
+            edgeY[0][maxX-1] = edgeY[0][maxX-2] = 0.0f;
 
+            for(int i=0; i<3; i++) {
+                float e = (1-(sqrt(pow(edgeX[0][x+i],2)+pow(edgeY[0][x+i],2))));
+                setPixel(x+i+0.5, y+0.5, e*pixels[0][x+i][y], e*pixels[1][x+i][y], e*pixels[2][x+i][y], drawMode);
+                edgeX[0][x+i] = edgeX[1][x+i];
+                edgeX[1][x+i] = edgeX[2][x+i];
+                edgeX[2][x+i] = 0.0f;
+                edgeY[0][x+i] = edgeY[1][x+i];
+                edgeY[1][x+i] = edgeY[2][x+i];
+                edgeY[2][x+i] = 0.0f;
+            }
+        }
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////
+//  #####  ##  ##  ######  ####   #####  ####
+//  ###    ######  ##  ##  ##  #  ## #   ##  #
+//    ###  ######  ######  ##  #  ###    ####
+//  #####  ##  ##  ##  ##  ####   #####  ##  #
+/////////////////////////////////////////////////
 vec3 computeShadedColor(vec3 pos) {
-    // TODO: Your shading code mostly go here
-
-//	return vec3(0.1f, 0.1f, 0.1f);
     vec3 sum = vec3(0, 0, 0);
     for(int i = 0; i < lights.size(); i++) {
         vec3 n = pos.normalize();
@@ -162,53 +254,87 @@ vec3 computeShadedColor(vec3 pos) {
         vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
         sum += amb + dif + spc;
     }
-    if(viewport.toonShade)sum = toonShading(sum, pos);
+
+    if(viewport.toonShade)
+        sum = toonShading(sum, pos);
     return  sum;
 }
+void display() {
+    cout << "Displaying.." << endl;
+    string drawMode1 = viewport.toonShade ? "ts" :
+                       viewport.writeIFile ? "pic" :
+                       "gl";
+    float scale = 1.0f;
+	int drawRange = min(viewport.w, viewport.h)/2 - 10;  // Make it almost fit the entire window
+	float drawRadius = scale/drawRange;
 
+	for (int i = -drawRange; i <= drawRange; i++) {
+		for (int j = -drawRange; j <= drawRange; j++) {
+			vec3 pos = circleShape(i*drawRadius,j*drawRadius);
+			if(pos.x != pos.x || pos.y != pos.y || pos.z != pos.z )
+                continue;
+			vec3 col = computeShadedColor(pos);
+
+			// Set the red pixel
+			setPixel(drawX + j, drawY + i, col.r, col.g, col.b, drawMode1);
+		}
+	}
+
+	// Filtering
+	if(viewport.toonShade) {
+        cout << "Edge Filtering..." << endl;
+        string drawMode2 = viewport.writeIFile ? "pic" : "gl";
+        edgeFilter(viewport.w,viewport.h, drawMode2);
+	}
+}
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ##   ##  ####   ######  ######  #####    #####  ######  #####      #####  ######  ##     #####
+// ## # ##  ##  #    ##      ##    ## #     ##  #    ##    ##         ##       ##    ##     ## #
+// ### ###  ####     ##      ##    ###      #####    ##    ##         ####     ##    ##     ###
+// ##   ##  ##  #  ######    ##    #####    ##     ######  ##### ##   ##     ######  #####  #####
+///////////////////////////////////////////////////////////////////////////////////////////////////
 //****************************************************
 // compute the bmp map vector[y position][x position][0 = red, 1 = green, 2 = blue]
 //****************************************************
 vector<vector<vec3>> computePixelMap(int iwidth, int iheight) {
-    vector<vector<vec3>> pMap;
-    pMap.resize(iheight);
-    for (int i = 0; i < iheight; i++) {
-        pMap[i].resize(iwidth);
-        for (int j = 0; j < iwidth; j++) {
+    pMap.resize(iwidth);
+    for (int i = 0; i < iwidth; i++) {
+        pMap[i].resize(iheight);
+        for (int j = 0; j < iheight; j++) {
             pMap[i][j] = vec3(1.0f, 1.0f, 1.0f);
         }
     }
 
-    int drawRadius = min(iwidth, iheight) / 2 - 10; // Make it almost fit the entire window
-    float idrawRadius = 1.0f / drawRadius;
+    display();
 
-
-
-    for (int i = -drawRadius; i <= drawRadius; i++) {
-        int width = floor(sqrt((float)(drawRadius * drawRadius - i * i)));
-        for (int j = -width; j <= width; j++) {
-
-            // Calculate the x, y, z of the surface of the sphere
-            float x = j * idrawRadius;
-            float y = i * idrawRadius;
-            float z = sqrtf(1.0f - x * x - y * y);
-            vec3 pos(x, y, z); // Position on the surface of the sphere
-
-            vec3 col = computeShadedColor(pos);
-
-            // Set the red pixel
-            pMap[j + iheight / 2][i + iwidth / 2] = col;
-        }
-    }
     return pMap;
 }
+void initVariable() {
+    if(viewport.toonShade) {
+        for(int i=0;i<3;i++) {
+            edgeX[i].resize(viewport.w);
+            edgeY[i].resize(viewport.w);
+            pixels[i].resize(viewport.w);
+            for(int x=0;x<viewport.w;x++) {
+                pixels[i][x].resize(viewport.h);
+                for(int y=0;y<viewport.h;y++)
+                    pixels[i][x][y] = 1.0f;
+            }
+        }
+    }
 
-//****************************************************
-// Write BMP & PPM file
-//****************************************************
+    drawX = (int)(viewport.w * 0.5f);
+    drawY = (int)(viewport.h * 0.5f);
+
+}
 void writeImageFile(char* fileName, char* fileType) {
     int width = viewport.w;
     int height = viewport.h;
+    initVariable();
 
     vector<vector<vec3>> pMap = computePixelMap(width, height);
 
@@ -219,8 +345,6 @@ void writeImageFile(char* fileName, char* fileType) {
 
     FILE* of;
     //ofstream ofs;
-
-
     int red, green, blue;
 
     if(strcmp(fileType, "BMP") == 0) {
@@ -347,6 +471,9 @@ void writeImageFile(char* fileName, char* fileType) {
     cout << "File: " << file << " created!\n";
 
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 //****************************************************
 // function that does the actual drawing of stuff
 //***************************************************
@@ -354,32 +481,13 @@ void myDisplay() {
 
     glClear(GL_COLOR_BUFFER_BIT);				// clear the color buffer
 
-    glMatrixMode(GL_MODELVIEW);					// indicate we are specifying camera transformations
-    glLoadIdentity();							// make sure transformation is "zero'd"
+	// Start drawing sphere
+	glBegin(GL_POINTS);
 
+    // New draw function
+	display();
 
-    int drawRadius = min(viewport.w, viewport.h) / 2 - 10; // Make it almost fit the entire window
-    float idrawRadius = 1.0f / drawRadius;
-    // Start drawing sphere
-    glBegin(GL_POINTS);
-
-    for (int i = -drawRadius; i <= drawRadius; i++) {
-        int width = floor(sqrt((float)(drawRadius * drawRadius - i * i)));
-        for (int j = -width; j <= width; j++) {
-
-            // Calculate the x, y, z of the surface of the sphere
-            float x = j * idrawRadius;
-            float y = i * idrawRadius;
-            float z = sqrtf(1.0f - x * x - y * y);
-            vec3 pos(x, y, z); // Position on the surface of the sphere
-
-            vec3 col = computeShadedColor(pos);
-
-            // Set the red pixel
-            setPixel(drawX + j, drawY + i, col.r, col.g, col.b);
-        }
-    }
-    glEnd();
+	glEnd();
     glFlush();
     glutSwapBuffers();					// swap buffers (we earlier set double buffer)
 
@@ -410,53 +518,62 @@ void myFrameMove() {
 
 
 void parseArguments(int argc, char* argv[]) {
-    int i = 1;
-    while (i < argc) {
-        if (strcmp(argv[i], "-ka") == 0) {
-            // Ambient color
-            material.ka.r = (float)atof(argv[i + 1]);
-            material.ka.g = (float)atof(argv[i + 2]);
-            material.ka.b = (float)atof(argv[i + 3]);
-            i += 4;
-        } else if (strcmp(argv[i], "-kd") == 0) {
-            // Diffuse color
-            material.kd.r = (float)atof(argv[i + 1]);
-            material.kd.g = (float)atof(argv[i + 2]);
-            material.kd.b = (float)atof(argv[i + 3]);
-            i += 4;
-        } else if (strcmp(argv[i], "-ks") == 0) {
-            // Specular color
-            material.ks.r = (float)atof(argv[i + 1]);
-            material.ks.g = (float)atof(argv[i + 2]);
-            material.ks.b = (float)atof(argv[i + 3]);
-            i += 4;
-        } else if (strcmp(argv[i], "-sp") == 0) {
-            // Specular power
-            material.sp = (float)atof(argv[i + 1]);
-            i += 2;
-        } else if ((strcmp(argv[i], "-pl") == 0) || (strcmp(argv[i], "-dl") == 0)) {
-            Light light;
-            // Specular color
-            light.posDir.x = (float)atof(argv[i + 1]);
-            light.posDir.y = (float)atof(argv[i + 2]);
-            light.posDir.z = (float)atof(argv[i + 3]);
-            light.color.r = (float)atof(argv[i + 4]);
-            light.color.g = (float)atof(argv[i + 5]);
-            light.color.b = (float)atof(argv[i + 6]);
-            if (strcmp(argv[i], "-pl") == 0) {
-                // Point
-                light.type = Light::POINT_LIGHT;
-            } else {
-                // Directional
-                light.type = Light::DIRECTIONAL_LIGHT;
-            }
-            lights.push_back(light);
-            i += 7;
-        } else if(strcmp(argv[i], "-ts") == 0) {
+	int i = 1;
+	while (i < argc) {
+		if (strcmp(argv[i], "-ka") == 0) {
+			// Ambient color
+			material.ka.r = (float)atof(argv[i+1]);
+			material.ka.g = (float)atof(argv[i+2]);
+			material.ka.b = (float)atof(argv[i+3]);
+			i+=4;
+		} else
+		if (strcmp(argv[i], "-kd") == 0) {
+			// Diffuse color
+			material.kd.r = (float)atof(argv[i+1]);
+			material.kd.g = (float)atof(argv[i+2]);
+			material.kd.b = (float)atof(argv[i+3]);
+			i+=4;
+		} else
+		if (strcmp(argv[i], "-ks") == 0) {
+			// Specular color
+			material.ks.r = (float)atof(argv[i+1]);
+			material.ks.g = (float)atof(argv[i+2]);
+			material.ks.b = (float)atof(argv[i+3]);
+			i+=4;
+		} else
+		if (strcmp(argv[i], "-sp") == 0) {
+			// Specular power
+			material.sp = (float)atof(argv[i+1]);
+			i+=2;
+		} else
+		if ((strcmp(argv[i], "-pl") == 0) || (strcmp(argv[i], "-dl") == 0)){
+			Light light;
+			// Specular color
+			light.posDir.x = (float)atof(argv[i+1]);
+			light.posDir.y = (float)atof(argv[i+2]);
+			light.posDir.z = (float)atof(argv[i+3]);
+			light.color.r = (float)atof(argv[i+4]);
+			light.color.g = (float)atof(argv[i+5]);
+			light.color.b = (float)atof(argv[i+6]);
+			if (strcmp(argv[i], "-pl") == 0) {
+				// Point
+				light.type = Light::POINT_LIGHT;
+			} else {
+				// Directional
+				light.type = Light::DIRECTIONAL_LIGHT;
+			}
+			lights.push_back(light);
+			i+=7;
+		} else if(strcmp(argv[i], "-ts") == 0) {
             // ToonShading
+            cout << "Toon Shade" << endl;
             viewport.toonShade = true;
+            if(i+1 < argc && '0' <= argv[i+1][0] && argv[i+1][0] <= '9')
+                viewport.shade = min(atoi(argv[++i]),1);
             i++;
-        } else if ((strcmp(argv[i], "-bmp") == 0) || (strcmp(argv[i], "-ppm")) == 0) {
+		} else if ((strcmp(argv[i], "-bmp") == 0) || (strcmp(argv[i], "-ppm")) == 0) {
+		    // Write to file
+            cout << "Write to file" << endl;
             viewport.w = atoi(argv[i + 1]);
             viewport.h = atoi(argv[i + 2]);
             viewport.writeIFile = true;
@@ -469,7 +586,7 @@ void parseArguments(int argc, char* argv[]) {
             }
             i += 3;
         }
-    }
+	}
 }
 
 //****************************************************
