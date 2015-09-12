@@ -268,15 +268,15 @@ void display() {
 	int drawRange = min(viewport.w, viewport.h)/2 - 10;  // Make it almost fit the entire window
 	float drawRadius = scale/drawRange;
 
-	for (int i = -drawRange; i <= drawRange; i++) {
-		for (int j = -drawRange; j <= drawRange; j++) {
-			vec3 pos = circleShape(i*drawRadius,j*drawRadius);
+	for (int y = -drawRange; y <= drawRange; y++) {
+		for (int x = -drawRange; x <= drawRange; x++) {
+			vec3 pos = circleShape(x*drawRadius,y*drawRadius);
 			if(pos.x != pos.x || pos.y != pos.y || pos.z != pos.z )
                 continue;
 			vec3 col = computeShadedColor(pos);
 
 			// Set the red pixel
-			setPixel(drawX + j, drawY + i, col.r, col.g, col.b, drawMode1);
+			setPixel(drawX + x, drawY + y, col.r, col.g, col.b, drawMode1);
 		}
 	}
 
