@@ -11,7 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-ka 0.2 0 0 -kd 1 0 0 -ks 1 1 1 -sp 50 -pl 5 5 5 1 1 1 -no 25 -ts " />
+				<Option parameters="-ka 0.2 0 0 -kd 1 0 0 -ks 1 1 1 -sp 50 -pl 5 5 5 1 1 1" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -21,7 +21,6 @@
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-ka 0.2 0 0 -kd 1 0 0 -ks 1 1 1 -sp 50 -pl 5 5 5 1 1 1 -no 25 -ts" />
 				<Compiler>
 					<Add option="-O2" />
 				</Compiler>

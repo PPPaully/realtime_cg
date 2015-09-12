@@ -75,10 +75,10 @@ public:
 // Material and lights
 Material material;
 vector<Light> lights;
-float pixels[1000][1000][3];
 float sobel[3][3] = {{1,2,1},{0,0,0},{-1,-2,-1}};
-float edgeX[1000][1000]={};
-float edgeY[1000][1000]={};
+vector<vector<float> > pixels[3];
+vector<float> edgeX[3];
+vector<float> edgeY[3];
 
 //****************************************************
 // Global Variables
@@ -86,15 +86,21 @@ float edgeY[1000][1000]={};
 Viewport	viewport;
 int 		drawX = 0;
 int 		drawY = 0;
-int         totalObjects = 1;
 
 
 void initScene(){
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f); // Clear to black, fully transparent
-	for(int x=0;x<viewport.w;x++)
-        for(int y=0;y<viewport.h;y++)
-            pixels[x][y][0] = pixels[x][y][1] = pixels[x][y][2] = 1.0f;
 
+	for(int i=0;i<3;i++) {
+        edgeX[i].resize(viewport.w);
+        edgeY[i].resize(viewport.w);
+        pixels[i].resize(viewport.w);
+        for(int x=0;x<viewport.w;x++) {
+            pixels[i][x].resize(viewport.h);
+            for(int y=0;y<viewport.h;y++)
+                pixels[i][x][y] = 1.0f;
+        }
+	}
 	glViewport (0,0,viewport.w,viewport.h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -109,6 +115,17 @@ void myReshape(int w, int h) {
 	viewport.w = w;
 	viewport.h = h;
 
+	for(int i=0;i<3;i++) {
+        edgeX[i].resize(viewport.w);
+        edgeY[i].resize(viewport.w);
+        pixels[i].resize(viewport.w);
+        for(int x=0;x<viewport.w;x++) {
+            pixels[i][x].resize(viewport.h);
+            for(int y=0;y<viewport.h;y++)
+                pixels[i][x][y] = 1.0f;
+        }
+	}
+
 	glViewport (0,0,viewport.w,viewport.h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -121,9 +138,9 @@ void myReshape(int w, int h) {
 
 void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
     if(viewport.toonShade) {
-        pixels[x][y][0] = r;
-        pixels[x][y][1] = g;
-        pixels[x][y][2] = b;
+        pixels[0][x][y] = r;
+        pixels[1][x][y] = g;
+        pixels[2][x][y] = b;
     }
     else {
         glColor3f(r, g, b);
@@ -172,55 +189,45 @@ vec3 computeShadedColor(vec3 pos) {
 
 void edgeFilter(int maxX, int maxY) {
     for(int x=0; x<maxX; x++) {
-        for(int y=0; y<maxY; y++) {
-            edgeX[x][y] = 0.0f;
-            edgeY[x][y] = 0.0f;
+        for(int y=0; y<3; y++) {
+            edgeX[y][x] = 0.0f;
+            edgeY[y][x] = 0.0f;
         }
     }
-    for(int x=0; x+3 < maxX; x++) {
-        for(int y=0; y+3 < maxY; y++) {
+    for(int y=0; y+3 < maxY; y++) {
+        for(int x=0; x+3 < maxX; x++) {
             for(int i=0; i<3; i++) {
                 for(int j=0; j<3; j++) {
                     for(int k=0; k<3; k++) {
-                        float avg = (pixels[x+k][y+i][0]+pixels[x+k][y+i][1]+pixels[x+k][y+i][2])/3;
-                        edgeX[x+i][y+j] += sobel[k][i]*avg;
-                        edgeY[x+i][y+j] += sobel[i][k]*avg;
+                        float avg = (pixels[0][x+k][y+i]+pixels[1][x+k][y+i]+pixels[2][x+k][y+i])/3;
+                        edgeX[j][x+i] += sobel[k][i]*avg;
+                        edgeY[j][x+i] += sobel[i][k]*avg;
                     }
                 }
             }
             for(int i=0; i<3; i++) {
-                for(int j=0; j<3; j++) {
-                    float e = (1-(sqrt(pow(edgeX[x+i][y+j],2)+pow(edgeY[x+i][y+j],2))));
-//                    glColor3f(e,e,e);
-//                    glColor3f(min(e,pixels[x+i][y+j][0]), min(e,pixels[x+i][y+j][1]), min(e,pixels[x+i][y+j][2]));
-                    glColor3f(e*pixels[x+i][y+j][0], e*pixels[x+i][y+j][1], e*pixels[x+i][y+j][2]);
-                    glVertex2f(x+i+0.5, y+j+0.5);
-                }
+                float e = (1-(sqrt(pow(edgeX[0][x+i],2)+pow(edgeY[0][x+i],2))));
+                glColor3f(e*pixels[0][x+i][y], e*pixels[1][x+i][y], e*pixels[2][x+i][y]);
+                glVertex2f(x+i+0.5, y+0.5);
+                edgeX[0][x+i] = edgeX[1][x+i];
+                edgeX[1][x+i] = edgeX[2][x+i];
+                edgeX[2][x+i] = 0.0f;
+                edgeY[0][x+i] = edgeY[1][x+i];
+                edgeY[1][x+i] = edgeY[2][x+i];
+                edgeY[2][x+i] = 0.0f;
             }
         }
     }
 }
-vec3 computeShadedColor(vec3 pos,vec3 mov) {
-	// TODO: Your shading code mostly go here
-
-//	return vec3(0.1f, 0.1f, 0.1f);
-    vec3 sum = vec3(0,0,0);
-    for(int i = 0; i < lights.size(); i++) {
-        vec3 n = pos.normalize();
-        vec3 lm = lights[i].posDir+mov;
-        vec3 l = lights[i].type == Light::DIRECTIONAL_LIGHT ? lm.normalize() : (lm - pos).normalize();
-        //float d = sqrt(((pos.x-lm.x)*(pos.x-lm.x))+((pos.y-lm.y)*(pos.y-lm.y))+((pos.z-lm.z)*(pos.z-lm.z)));
-        vec3 lc = lights[i].color;///d;
-        vec3 r = (2*(l*n)*n-l).normalize();
-        vec3 v = vec3(0,0,1);
-
-        vec3 amb = vec3(material.ka.r*lc.r,material.ka.g*lc.g,material.ka.b*lc.b);
-        vec3 dif = vec3(material.kd.r*lc.r,material.kd.g*lc.g,material.kd.b*lc.b)*max(n*l,0.0f);
-        vec3 spc = vec3(material.ks.r*lc.r,material.ks.g*lc.g,material.ks.b*lc.b)*pow(max(r*v,0.0f),material.sp);
-        sum += amb + dif + spc;
-    }
-    if(viewport.toonShade)sum = toonShading(sum,pos);
-    return  sum;
+vec3 circleShape(float x,float y) {
+    return vec3(x,y,sqrt(1.0f-x*x-y*y));
+}
+vec3 customShape(float u,float v) {
+    float C = 4*2;
+    float x = (sin(atan(u/v)*C));
+    float y = (cos(atan(u/v)*C));
+    float z = sin(u*u+v*v);
+    return vec3(x,y,z);
 }
 //****************************************************
 // function that does the actual drawing of stuff
@@ -232,37 +239,30 @@ void myDisplay() {
 	glMatrixMode(GL_MODELVIEW);					// indicate we are specifying camera transformations
 	glLoadIdentity();							// make sure transformation is "zero'd"
 
-    int n = totalObjects;
-    int scale = 2*sqrt(n);
-    int drawRadius = min(viewport.w, viewport.h) / scale - 10;  // Make it almost fit the entire window
-	float idrawRadius = 1.0f / drawRadius;
 	// Start drawing sphere
 	glBegin(GL_POINTS);
 
+    float scale = 1.0f;
+	int drawRange = min(viewport.w, viewport.h)/2 - 10;  // Make it almost fit the entire window
+	float drawRadius = scale/drawRange;
+
+	for (int i = -drawRange; i <= drawRange; i++) {
+		for (int j = -drawRange; j <= drawRange; j++) {
+			vec3 pos = circleShape(i*drawRadius,j*drawRadius);
+			if(pos.x != pos.x || pos.y != pos.y || pos.z != pos.z )
+                continue;
+			vec3 col = computeShadedColor(pos);
+
+			// Set the red pixel
+			setPixel(drawX + j, drawY + i, col.r, col.g, col.b);
+		}
+	}
+
+	// Filtering
 	if(viewport.toonShade)
         edgeFilter(viewport.w,viewport.h);
-    for (int i = -drawRadius; i <= drawRadius; i++) {
-        int width = floor(sqrt((float)(drawRadius * drawRadius - i * i)));
-        for (int j = -width; j <= width; j++) {
 
-            // Calculate the x, y, z of the surface of the sphere
-            float x = j * idrawRadius;
-            float y = i * idrawRadius;
-            float z = sqrtf(1.0f - x * x - y * y);
-            vec3 pos(x, y, z); // Position on the surface of the sphere
-            for(int k = -(sqrt(n)-1); k <= (sqrt(n)-1); k += 2) {
-                for(int l = -(sqrt(n)-1); l <= (sqrt(n)-1); l += 2) {
-                    vec3 mov(k * drawRadius, l * drawRadius, 0.0f);
-                    vec3 mov2(k, l, 0.0f);
-                    vec3 col = computeShadedColor(pos, -mov2);
 
-                    // Set the red pixel
-                    setPixel(drawX + j + mov.x, drawY + i + mov.y, col.r, col.g, col.b);
-                }
-            }
-
-        }
-    }
 	glEnd();
 
 	glFlush();
@@ -348,10 +348,6 @@ void parseArguments(int argc, char* argv[]) {
             if(i+1 < argc && '0' <= argv[i+1][0] && argv[i+1][0] <= '9')
                 viewport.shade = min(atoi(argv[++i]),1);
             i++;
-		}
-		else if(strcmp(argv[i], "-no") == 0) {
-            totalObjects = (int)atoi(argv[i+1]);
-            i+=2;
 		}
 	}
 }
