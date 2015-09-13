@@ -1,3 +1,12 @@
+# Image files
+*.bmp
+*.jpg
+*.jpeg
+*.png
+*.tiff
+*.ppm
+
+# Code::Blocks files
 *.depend
 *.layout
 

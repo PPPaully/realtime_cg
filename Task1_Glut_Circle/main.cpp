@@ -278,7 +278,9 @@ vec3 computeShadedColor(vec3 pos, vec3 mov) {
         vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
         sum += amb + dif + spc;
     }
-    if(viewport.toonShade)sum = toonShading(sum, pos);
+
+    if(viewport.toonShade)
+        sum = toonShading(sum, pos);
     return  sum;
 }
 void display() {
@@ -286,6 +288,7 @@ void display() {
     string drawMode1 = viewport.toonShade ? "ts" :
                        viewport.writeIFile ? "pic" :
                        "gl";
+
     int n = viewport.totalObject;
     while(fmod(sqrtf(n), 1.0f) != 0.0f)
         n++;

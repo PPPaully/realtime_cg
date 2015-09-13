@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#define M_PI 3.14159265358979323846
 
 // this line defines a new type: pointer to a function which returns a
 // float and takes as argument a float
@@ -53,12 +52,12 @@ class mat4;
 enum {VX, VY, VZ, VW};		    // axes
 enum {PA, PB, PC, PD};		    // planes
 enum {RED, GREEN, BLUE};	    // colors
-//
+
 //	PI
-//
-//const float M_PI =  3.14159f;		// per CRC handbook, 14th. ed.
-//const float M_PI_2 = (M_PI/2.0);				// PI/2
-//const float M2_PI = (M_PI*2.0);				// PI*2
+
+const float M_PI =  3.14159f;		// per CRC handbook, 14th. ed.
+const float M_PI_2 = (M_PI/2.0);				// PI/2
+const float M2_PI = (M_PI*2.0);				// PI*2
 
 
 /****************************************************************
