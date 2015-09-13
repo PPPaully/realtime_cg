@@ -118,7 +118,10 @@ void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
 vec3 diffuse(vec3 pos)
 {  //   float r,g,b;
       vec3 sum(0.0f,0.0f,0.0f);
-      vec3 n = pos.normalize();
+       vec3 n = pos;
+       n.y=0.0f;
+       n = n.normalize();
+
       for(int i = 0;i<lights.size();i++){
              vec3 l = lights[i].type == Light::DIRECTIONAL_LIGHT ? lights[i].posDir.normalize() : (lights[i].posDir - pos).normalize();
              sum.r+= max(l*n,0.0f) * lights[i].color.r*material.kd.r;
@@ -132,9 +135,12 @@ vec3 diffuse(vec3 pos)
 }
 vec3 specular(vec3 pos){
 
-       vec3 n = pos.normalize();
+       vec3 n = pos;
+       n.y=0.0f;
+       n = n.normalize();
+
        vec3 sum(0.0f,0.0f,0.0f);
-       vec3 v(0.0f,0.0f,1.0f);
+       vec3 v = vec3(0.0f,0.0f,1.0f);
        for(int i = 0;i<lights.size();i++){
                vec3 l = lights[i].type == Light::DIRECTIONAL_LIGHT ? lights[i].posDir.normalize() : (lights[i].posDir - pos).normalize();
                vec3 r = (2.0*(l*n))*n-(l);
@@ -208,7 +214,7 @@ void myDisplay() {
 	glFlush();
 	glutSwapBuffers();
 //	for(int i = 0;i<lights.size();i++)
-	     lights[0].posDir =vec3(50,0,20);					// swap buffers (we earlier set double buffer)
+    //    lights[0].posDir =vec3(50*sin(rad+=0.1),0,10);					// swap buffers (we earlier set double buffer)
 }
 
 
