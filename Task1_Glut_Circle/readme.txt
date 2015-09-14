@@ -8,9 +8,19 @@ By :
 5631076821 Mongkud Klungpornkun 
 5631092821 Seehait Chockthanyawat
 
+Extra credit :
+
+• Anisotropic diffuse or specular shading
+• Writing the image to a image file instead of to the screen.
+• Some sort of "toon" shading.
+• Other shapes besides spheres.
+• Multiple spheres.
+
 Additional command line option (Parenthesis is optional) : 
 -co
 This changes the rendered object(s) into cone shape. By default (without -co command), they will be sphere shape.
+-an
+This changes rendering type into anisotropic model shading. By default (without -an command), it will be simple model shading.
 -no n
 This creates and renders n object(s) into their own fixed position in fixed integer-square table. By default (without -no command), this will render only 1 object. 
 -ts (n)
