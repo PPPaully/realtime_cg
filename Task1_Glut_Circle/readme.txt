@@ -28,4 +28,4 @@ This renders the object(s) with toon shading by n shade(s). By default, the numb
 -bmp w h
 This causes no OpenGL window and renders all shaded object(s) into an image file with w-pixel width and h-pixel height in BMP format. Minimum width and height are 400 pixels.
 -ppm w h
-Same as -bmp command but in PPM format. If you adds both -bmp and -ppm commands, it will write only BMP image file.
+Same as -bmp command but in PPM format. If you add both -bmp and -ppm commands, it will write only BMP image file.
