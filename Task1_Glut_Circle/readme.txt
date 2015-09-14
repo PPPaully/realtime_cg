@@ -22,7 +22,7 @@ This changes the rendered object(s) into cone shape. By default (without -co com
 -an
 This changes rendering type into anisotropic model shading. By default (without -an command), it will be simple model shading.
 -no n
-This creates and renders n object(s) into their own fixed position in fixed integer-square table. By default (without -no command), this will render only 1 object. 
+This creates and renders n object(s) into their own fixed position in their suitable integer-square table. The origin is still at the center of the area, and the half of maximum between object's width and height (or the radius for the sphere) still defines one unit of length. By default (without -no command), this will render only 1 object. 
 -ts (n)
 This renders the object(s) with toon shading by n shade(s). By default, the number of shade is 3 and minimum is 2.
 -bmp w h
