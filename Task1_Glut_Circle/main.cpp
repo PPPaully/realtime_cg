@@ -47,6 +47,7 @@ public:
     int w, h; // width and height
     int shade = 3; // shade of Toon Shading
     int totalObject = 1;
+    bool aniso = false;
     bool toonShade = false;
     bool cone = false ;
     bool writeIFile = false;
@@ -246,24 +247,39 @@ void edgeFilter(int maxX, int maxY,string drawMode) {
 //    ###  ######  ######  ##  #  ###    ####
 //  #####  ##  ##  ##  ##  ####   #####  ##  #
 /////////////////////////////////////////////////
-vec3 computeShadedColor(vec3 pos) {
-    vec3 sum = vec3(0, 0, 0);
-    for(int i = 0; i < lights.size(); i++) {
-        vec3 n = pos.normalize();
-        vec3 l = lights[i].type == Light::DIRECTIONAL_LIGHT ? lights[i].posDir.normalize() : (lights[i].posDir - pos).normalize();
-        vec3 lc = lights[i].color;
-        vec3 r = (2 * (l * n) * n - l).normalize();
-        vec3 v = vec3(0, 0, 1);
+vec3 anisoStyle(vec3 pos,vec3 mov)
+{
+      vec3 sum(0.0f,0.0f,0.0f);
+      vec3 n = pos.normalize();
+       vec3 v =vec3(0.0f,0.0f,1.0f) ;
+      for(int i = 0;i<lights.size();i++){
+             vec3 lm = lights[i].posDir + mov;
+             vec3 l = lights[i].type == Light::DIRECTIONAL_LIGHT ? lm.normalize() : (lm - pos).normalize();
+             sum.r+= max(l*n,0.0f) * lights[i].color.r*material.kd.r/2;
+             sum.g+= max(l*n,0.0f) * lights[i].color.g*material.kd.g/2;
+             sum.b+= max(l*n,0.0f) * lights[i].color.b*material.kd.b/2;
+             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+             float cosL = (vec3(lights[i].posDir.x,lights[i].posDir.y,0.0f).normalize())*vec3(1.0f,0.0f,0.0f);
+             float cetar =   acos(cosL) -PI/2;
+             vec3 nPos(pos.x*cos(cetar)-pos.y*sin(cetar),pos.x*sin(cetar)+pos.y*cos(cetar),pos.z);
+             vec3 n = (nPos).normalize();
+               l.y =n.y ;
+               vec3 r = (2.0*(l*n))*n-(l);
+               r = r.normalize();
+               vec3 incidenceVector = -l;
+               vec3 surfaceToCamera = (v).normalize();
+               float cosAngle = max(0.0f, (surfaceToCamera*r));
+               float specularCoefficient = pow(cosAngle, material.sp);
+               sum.r+=material.kd.r*lights[i].color.r*specularCoefficient;
+               sum.g+=material.kd.g*lights[i].color.g*specularCoefficient;
+               sum.b+=material.kd.b*lights[i].color.b*specularCoefficient;
+            //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+               sum.r += material.ka.r*lights[i].color.r;
+               sum.g += material.ka.g*lights[i].color.g;
+               sum.b += material.ka.b*lights[i].color.b;
 
-        vec3 amb = vec3(material.ka.r * lc.r, material.ka.g * lc.g, material.ka.b * lc.b);
-        vec3 dif = vec3(material.kd.r * lc.r, material.kd.g * lc.g, material.kd.b * lc.b) * max(n * l, 0.0f);
-        vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
-        sum += amb + dif + spc;
-    }
-
-    if(viewport.toonShade)
-        sum = toonShading(sum);
-    return  sum;
+      }
+      return sum;
 }
 vec3 computeShadedColor(vec3 pos, vec3 mov) {
     vec3 sum = vec3(0, 0, 0);
@@ -277,7 +293,7 @@ vec3 computeShadedColor(vec3 pos, vec3 mov) {
         vec3 lc = lights[i].color;
         vec3 r = (2 * (l * n) * n - l).normalize();
         vec3 v = vec3(0, 0, 1);
-
+       
         vec3 amb = vec3(material.ka.r * lc.r, material.ka.g * lc.g, material.ka.b * lc.b);
         vec3 dif = vec3(material.kd.r * lc.r, material.kd.g * lc.g, material.kd.b * lc.b) * max(n * l, 0.0f);
         vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
@@ -321,7 +337,11 @@ void display() {
                 for(int l = -maxProjDist; l <= maxProjDist; l += 2) {
                     vec3 movObjPos(k, l, 0.0f);
                     vec3 movObjPixPos = movObjPos*objDrawRange;
-                    vec3 col = computeShadedColor(pos, -movObjPos);
+                    vec3 col;
+                    if(viewport.aniso)
+                     col=anisoStyle(pos, -movObjPos);
+                    else 
+                         col = computeShadedColor(pos, -movObjPos);
                     // Set the red pixel
                     setPixel(drawX + x + movObjPixPos.x, drawY + y + movObjPixPos.y, col.r, col.g, col.b,
                              drawMode1);
@@ -626,6 +646,12 @@ void parseArguments(int argc, char* argv[]) {
             viewport.cone = true;
             i ++;
         }
+        else if(strcmp(argv[i], "-an") == 0) {
+		    // MultipleObject
+            viewport.aniso = true;
+            i ++;
+        }
+        
 		else if(strcmp(argv[i], "-ts") == 0) {
             // ToonShading
             cout << "Toon Shade" << endl;
