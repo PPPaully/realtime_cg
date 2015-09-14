@@ -188,7 +188,7 @@ vec3 customShape(float u,float v) {
 //////////////////////////////////////////////////////////////////////////////
 float cutColor(float x) {
     float tmp = floor(x*viewport.shade) / viewport.shade;
-    if(tmp > 0.7f) return 1.0f;
+    if(tmp > 0.9f - (1.0f/viewport.shade)*(1.0f/viewport.shade)) return 1.0f;
     else return tmp;
 }
 vec3 toonShading(vec3 v) {
@@ -570,8 +570,10 @@ void parseArguments(int argc, char* argv[]) {
             // ToonShading
             cout << "Toon Shade" << endl;
             viewport.toonShade = true;
-            if(i+1 < argc && '0' <= argv[i+1][0] && argv[i+1][0] <= '9')
-                viewport.shade = min(atoi(argv[++i]),1);
+            if(i+1 < argc && '0' <= argv[i+1][0] && argv[i+1][0] <= '9') {
+                viewport.shade = max(atoi(argv[++i]),2);
+                cout << "Toon shade: " << viewport.shade << endl;
+            }
             i++;
 		} else if ((strcmp(argv[i], "-bmp") == 0) || (strcmp(argv[i], "-ppm")) == 0) {
 		    // Write to file
