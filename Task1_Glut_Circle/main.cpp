@@ -293,7 +293,7 @@ vec3 computeShadedColor(vec3 pos, vec3 mov) {
         vec3 lc = lights[i].color;
         vec3 r = (2 * (l * n) * n - l).normalize();
         vec3 v = vec3(0, 0, 1);
-       
+
         vec3 amb = vec3(material.ka.r * lc.r, material.ka.g * lc.g, material.ka.b * lc.b);
         vec3 dif = vec3(material.kd.r * lc.r, material.kd.g * lc.g, material.kd.b * lc.b) * max(n * l, 0.0f);
         vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
@@ -340,7 +340,7 @@ void display() {
                     vec3 col;
                     if(viewport.aniso)
                      col=anisoStyle(pos, -movObjPos);
-                    else 
+                    else
                          col = computeShadedColor(pos, -movObjPos);
                     // Set the red pixel
                     setPixel(drawX + x + movObjPixPos.x, drawY + y + movObjPixPos.y, col.r, col.g, col.b,
@@ -647,11 +647,11 @@ void parseArguments(int argc, char* argv[]) {
             i ++;
         }
         else if(strcmp(argv[i], "-an") == 0) {
-		    // MultipleObject
+		    // Anisotropic diffuse
             viewport.aniso = true;
             i ++;
         }
-        
+
 		else if(strcmp(argv[i], "-ts") == 0) {
             // ToonShading
             cout << "Toon Shade" << endl;
