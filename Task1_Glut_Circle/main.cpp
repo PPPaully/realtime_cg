@@ -187,9 +187,11 @@ vec3 customShape(float u,float v) {
 //   ##    #######  #######  ##  ###  #####  ##  ##  ##  ##  ####   #####
 //////////////////////////////////////////////////////////////////////////////
 float cutColor(float x) {
-    return floor(x*viewport.shade) / viewport.shade;
+    float tmp = floor(x*viewport.shade) / viewport.shade;
+    if(tmp > 0.7f) return 1.0f;
+    else return tmp;
 }
-vec3 toonShading(vec3 v,vec3 pos) {
+vec3 toonShading(vec3 v) {
     vec3 tmp = vec3(cutColor(v.x),cutColor(v.y),cutColor(v.z));
     return tmp;
 }
@@ -256,7 +258,7 @@ vec3 computeShadedColor(vec3 pos) {
     }
 
     if(viewport.toonShade)
-        sum = toonShading(sum, pos);
+        sum = toonShading(sum);
     return  sum;
 }
 void display() {
