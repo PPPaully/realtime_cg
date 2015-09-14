@@ -48,7 +48,7 @@ public:
     int shade = 3; // shade of Toon Shading
     int totalObject = 1;
     bool toonShade = false;
-    bool cone = false ;	
+    bool cone = false ;
     bool writeIFile = false;
     char* iFileType;
 };
@@ -286,6 +286,29 @@ vec3 computeShadedColor(vec3 pos, vec3 mov) {
 
     if(viewport.toonShade)
         sum = toonShading(sum);
+    return  sum;
+}
+vec3 computeShadedColor(vec3 pos, vec3 mov) {
+    vec3 sum = vec3(0, 0, 0);
+    for(int i = 0; i < lights.size(); i++) {
+        vec3 n = pos.normalize();
+        vec3 lm = lights[i].posDir + mov;
+        vec3 l = lights[i].type == Light::DIRECTIONAL_LIGHT ? lm.normalize() : (lm - pos).normalize();
+        // This is just trying to drop down the light intensity.
+        // float d = sqrt(((pos.x-lm.x)*(pos.x-lm.x))+((pos.y-lm.y)*(pos.y-lm.y))+((pos.z-lm.z)*(pos.z-lm.z)));
+        // vec3 lc = lights[i].color/d;
+        vec3 lc = lights[i].color;
+        vec3 r = (2 * (l * n) * n - l).normalize();
+        vec3 v = vec3(0, 0, 1);
+
+        vec3 amb = vec3(material.ka.r * lc.r, material.ka.g * lc.g, material.ka.b * lc.b);
+        vec3 dif = vec3(material.kd.r * lc.r, material.kd.g * lc.g, material.kd.b * lc.b) * max(n * l, 0.0f);
+        vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
+        sum += amb + dif + spc;
+    }
+
+    if(viewport.toonShade)
+        sum = toonShading(sum, pos);
     return  sum;
 }
 void display() {
