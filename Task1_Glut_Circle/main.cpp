@@ -45,8 +45,10 @@ class Viewport;
 class Viewport {
 public:
     int w, h; // width and height
-	int shade = 3; // shade of Toon Shading
-	bool toonShade = false;
+    int shade = 3; // shade of Toon Shading
+    int totalObject = 1;
+    bool toonShade = false;
+    bool cone = false ;	
     bool writeIFile = false;
     char* iFileType;
 };
@@ -170,10 +172,12 @@ vec3 circleShape(float x,float y) {
 }
 
 vec3 customShape(float u,float v) {
-    float C = 4*2;
-    float x = (sin(atan(u/v)*C));
-    float y = (cos(atan(u/v)*C));
-    float z = sin(u*u+v*v);
+    float w = 1-((v+1)/2);
+    if(u < -w|| u > w ) return vec3(0,0,0);
+    v = (-v + 1.0f)/2.0f;
+    float x = atan(u/v);
+    float y = atan(u/v);
+    float z = sqrt(1.0f-x*x-y*y);
     return vec3(x,y,z);
 }
 //////////////////////////////////////////////////////////////////////////////////////
@@ -261,24 +265,70 @@ vec3 computeShadedColor(vec3 pos) {
         sum = toonShading(sum);
     return  sum;
 }
+vec3 computeShadedColor(vec3 pos, vec3 mov) {
+    vec3 sum = vec3(0, 0, 0);
+    for(int i = 0; i < lights.size(); i++) {
+        vec3 n = pos.normalize();
+        vec3 lm = lights[i].posDir + mov;
+        vec3 l = lights[i].type == Light::DIRECTIONAL_LIGHT ? lm.normalize() : (lm - pos).normalize();
+        // This is just trying to drop down the light intensity.
+        // float d = sqrt(((pos.x-lm.x)*(pos.x-lm.x))+((pos.y-lm.y)*(pos.y-lm.y))+((pos.z-lm.z)*(pos.z-lm.z)));
+        // vec3 lc = lights[i].color/d;
+        vec3 lc = lights[i].color;
+        vec3 r = (2 * (l * n) * n - l).normalize();
+        vec3 v = vec3(0, 0, 1);
+
+        vec3 amb = vec3(material.ka.r * lc.r, material.ka.g * lc.g, material.ka.b * lc.b);
+        vec3 dif = vec3(material.kd.r * lc.r, material.kd.g * lc.g, material.kd.b * lc.b) * max(n * l, 0.0f);
+        vec3 spc = vec3(material.ks.r * lc.r, material.ks.g * lc.g, material.ks.b * lc.b) * pow(max(r * v, 0.0f), material.sp);
+        sum += amb + dif + spc;
+    }
+
+    if(viewport.toonShade)
+        sum = toonShading(sum);
+    return  sum;
+}
 void display() {
     cout << "Displaying.." << endl;
     string drawMode1 = viewport.toonShade ? "ts" :
                        viewport.writeIFile ? "pic" :
                        "gl";
-    float scale = 1.0f;
-	int drawRange = min(viewport.w, viewport.h)/2 - 10;  // Make it almost fit the entire window
-	float drawRadius = scale/drawRange;
 
-	for (int y = -drawRange; y <= drawRange; y++) {
-		for (int x = -drawRange; x <= drawRange; x++) {
-			vec3 pos = circleShape(x*drawRadius,y*drawRadius);
+    int n = viewport.totalObject;
+    while(fmod(sqrtf(n), 1.0f) != 0.0f)
+        n++;
+    float scale = 1.0f/sqrtf(n);
+    int border = 5;
+	int drawRange = (min(viewport.w, viewport.h)-border)/2;  // Make it almost fit the entire window
+	float objDrawRange = drawRange*scale;
+	float iObjDrawRange = 1.0f/objDrawRange;
+
+
+	for (int y = -objDrawRange; y <= objDrawRange; y++) {
+		for (int x = -objDrawRange; x <= objDrawRange; x++) {
+			vec3 pos;
+			if(viewport.cone)
+                pos = customShape(x*iObjDrawRange,y*iObjDrawRange);
+			else pos =circleShape(x*iObjDrawRange,y*iObjDrawRange);
+
 			if(pos.x != pos.x || pos.y != pos.y || pos.z != pos.z )
                 continue;
-			vec3 col = computeShadedColor(pos);
-
-			// Set the red pixel
-			setPixel(drawX + x, drawY + y, col.r, col.g, col.b, drawMode1);
+			if(!pos.x&&!pos.y&&!pos.z)
+                 continue;
+			int drawnObject = 0;
+            int maxProjDist = (sqrt(n) - 1);
+            for(int k = -maxProjDist; k <= maxProjDist; k += 2) {
+                for(int l = -maxProjDist; l <= maxProjDist; l += 2) {
+                    vec3 movObjPos(k, l, 0.0f);
+                    vec3 movObjPixPos = movObjPos*objDrawRange;
+                    vec3 col = computeShadedColor(pos, -movObjPos);
+                    // Set the red pixel
+                    setPixel(drawX + x + movObjPixPos.x, drawY + y + movObjPixPos.y, col.r, col.g, col.b,
+                             drawMode1);
+                    if(++drawnObject > viewport.totalObject)
+                        break;
+                }
+            }
 		}
 	}
 
@@ -566,7 +616,17 @@ void parseArguments(int argc, char* argv[]) {
 			}
 			lights.push_back(light);
 			i+=7;
-		} else if(strcmp(argv[i], "-ts") == 0) {
+		}else if(strcmp(argv[i], "-no") == 0) {
+		    // MultipleObject
+            viewport.totalObject = atoi(argv[i + 1]);
+            i += 2;
+        }
+        else if(strcmp(argv[i], "-co") == 0) {
+		    // MultipleObject
+            viewport.cone = true;
+            i ++;
+        }
+		else if(strcmp(argv[i], "-ts") == 0) {
             // ToonShading
             cout << "Toon Shade" << endl;
             viewport.toonShade = true;
