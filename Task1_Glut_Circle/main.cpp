@@ -638,8 +638,8 @@ void parseArguments(int argc, char* argv[]) {
 		} else if ((strcmp(argv[i], "-bmp") == 0) || (strcmp(argv[i], "-ppm")) == 0) {
 		    // Write to file
             cout << "Write to file" << endl;
-            viewport.w = atoi(argv[i + 1]);
-            viewport.h = atoi(argv[i + 2]);
+            viewport.w = max(atoi(argv[i + 1]), 400);
+            viewport.h = max(atoi(argv[i + 2]), 400);
             viewport.writeIFile = true;
             if (strcmp(argv[i], "-bmp") == 0) {
                 // BMP
